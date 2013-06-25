@@ -1,0 +1,9 @@
+HumanPlayer class should have a color as an attribute
+Each player is assigned a color in Game class
+HumanPlayer is only allowed to move pieces that share its color
+  HumanPlayer.color == piece.color
+HumanPlayer cannot put its own king in check
+  After making a move, see if check?[1] == HumanPlayer.color
+  If so, make them change their move (forfeit move?)
+
+Add play (or whatever name) method to loop until check_mate?
