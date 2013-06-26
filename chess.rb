@@ -13,7 +13,7 @@ class Game
 
     @player1 = HumanPlayer.new('white')
     @player2 = HumanPlayer.new('black')
-
+    @whose_turn = 1
     puts "Player 1 is blue"
     puts "Player 2 is red"
 
@@ -22,7 +22,11 @@ class Game
   end
 
   def display_board
+    print "  "
+    (0..7).each {|x| print " #{x} "}
+    puts
     @board.each_with_index do |row, i|
+      print "#{i} "
       row.each_with_index do |char, j|
         if (i + j).even?
           if char.is_a? String
@@ -195,6 +199,8 @@ class Game
       if piece.is_a? King
         @king_location_black = piece.location if piece.color == 'black'
         @king_location_white = piece.location if piece.color == 'white'
+      elsif piece.is_a? Pawn
+        piece.pawn_promotion(@board)
       end
     end
     if check?[0]
@@ -226,19 +232,18 @@ class Game
   end
 
   def play_game
-    whose_turn = 1
     while true
-      while whose_turn == 1
+      while @whose_turn == 1
         if take_turn(@player1)
           return false
         end
-        whose_turn *= -1
+        @whose_turn *= -1
       end
-      while whose_turn == -1
+      while @whose_turn == -1
         if take_turn(@player2)
           return false
         end
-        whose_turn *= -1
+        @whose_turn *= -1
       end
     end
   end
@@ -249,19 +254,55 @@ class Game
     puts "#{player_color} player's turn"
     begin
       player_move = player.make_move
+
+      if player_move == 'save'
+        save
+        return true
+      elsif player_move == 'load'
+        load
+
+      end
+
       piece = @board[player_move[0][0]][player_move[0][1]]
 
-      unless piece.valid_move?(player_move[0], player_move[1], @board) && \
-        color_match_piece?(player_move, player) && \
-        !checks_own_king?(player_move, player)
+      if !piece.is_a? Piece
         raise ArgumentError.new
+      elsif !piece.valid_move?(player_move[0], player_move[1], @board) || \
+          !color_match_piece?(player_move, player) || \
+          checks_own_king?(player_move, player)
+          raise ArgumentError.new
       end
     rescue ArgumentError => e
       puts "Invalid move. Try again."
       retry
+
     end
     move(player_move)
   end
+
+  def save
+    temp = [@board, @whose_turn, @king_location_black, @king_location_white]
+
+    print "Filename: "
+    filename = gets.chomp
+
+    File.open(filename, 'w') do |file|
+      file.puts temp.to_yaml
+    end
+
+  end
+
+  def load
+    print "Filename: "
+    filename = gets.chomp
+    if File.exists?(filename)
+      load_file = YAML::load(File.read(filename))
+    end
+    @board, @whose_turn, @king_location_black, @king_location_white = load_file
+    play_game
+  end
+
+
 end
 
 
@@ -338,6 +379,24 @@ class Pawn < Piece
       end
     end
     false
+  end
+
+  def pawn_promotion(board)
+    end_row = self.color == 'black' ? 7 : 0
+    if self.location[0] == end_row
+      print "What type of piece do you want to promote to? "
+      type = gets.chomp
+      case type
+      when 'rook'
+        board[self.location[0]][self.location[1]] = Rook.new(self.color, self.location)
+      when 'knight'
+        board[self.location[0]][self.location[1]] = Knight.new(self.color, self.location)
+      when 'bishop'
+        board[self.location[0]][self.location[1]] = Bishop.new(self.color, self.location)
+      when 'queen'
+        board[self.location[0]][self.location[1]] = Queen.new(self.color, self.location)
+      end
+    end
   end
 
 end
@@ -508,8 +567,15 @@ class HumanPlayer
     ["from", "to"].each do |word|
       begin
         print "Enter coordinates you want to move #{word} (e.g. 0,0): "
-        coord = gets.chomp.split(',').map{|x| x.to_i}
+        input = gets.chomp
+        if input == 'save'
+          return input
+        elsif input == 'load'
+          return input
+        end
+        coord = input.split(',').map{|x| x.to_i}
         coords << coord
+
         if coord.length != 2
           raise ArgumentError.new
         end
@@ -522,5 +588,4 @@ class HumanPlayer
 
     coords
   end
-
 end
