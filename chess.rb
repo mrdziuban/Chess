@@ -589,3 +589,7 @@ class HumanPlayer
     coords
   end
 end
+
+if __FILE__ == $PROGRAM_NAME
+  Game.new
+end
